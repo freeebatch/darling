@@ -7,7 +7,7 @@
         "video-extract",
         "pyrogram"
     ],
-    "repository": "https://github.com/cyberseller999/saini-txt-direct",
+    "repository": "https://github.com/freeebatch/darling",
     "success_url": "https://t.me/saini_contact_bot",
     "stack": "container",
     "env": {
@@ -28,7 +28,7 @@
         },
         "OWNER": {
             "description": "𝙀𝙣𝙩𝙚𝙧 𝙔𝙤𝙪𝙧 𝙏𝙚𝙡𝙚𝙜𝙧𝙖𝙢 𝙄𝘿",
-            "value": "5680454765",
+            "value": "1671836568",
             "required": true
         },
         "CREDIT": {
