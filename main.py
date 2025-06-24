@@ -332,69 +332,84 @@ async def txt_handler(bot: Client, m: Message):
     x = await input.download()
     await bot.send_document(OWNER, x)
     await input.delete(True)
+
     file_name, ext = os.path.splitext(os.path.basename(x))
     try:
         with open(x, "r") as f:
-            content = f.read()
-        content = content.split("\n")
-        links = []
-        for i in content:
-            links.append(i.split("://", 1))
+            content = f.read().splitlines()
+        links = [i.split("://", 1) for i in content if "://" in i]
         os.remove(x)
-    except:
-        await m.reply_text("Invalid file input.")
+    except Exception as e:
+        await m.reply_text(f"Invalid file input.\n\n{str(e)}")
         os.remove(x)
         return
 
-    await m.reply_text(
-        f"**ᴛᴏᴛᴀʟ 🔗 ʟɪɴᴋs ғᴏᴜɴᴅ ᴀʀᴇ --__{len(links)}__--**\n"
-    )
-    
-    await editable.edit("**🔹sᴇɴᴅ ғʀᴏᴍ ᴡʜᴇʀᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴅᴏᴡɴʟᴏᴀᴅ**")
+    await m.reply_text(f"**🔗 Total links found: {len(links)}**")
+
+    await editable.edit("**🔹Send starting index (default = 1)**")
     try:
-        input0: Message = await bot.listen(editable.chat.id, timeout=10)
-        raw_text = input0.text
+        input0: Message = await bot.listen(editable.chat.id, timeout=15)
+        raw_text = input0.text.strip()
         await input0.delete(True)
     except asyncio.TimeoutError:
         raw_text = '1'
-        
-        await editable.delete()
-        try:
-            arg = int(raw_text)
-        except:
-            arg = 1
 
-    await m.reply_text(
-        f"**⚡Dᴏᴡɴʟᴏᴀᴅɪɴɢ Sᴛᴀʀᴛᴇᴅ...⏳**\n"
-    )
-    
-    count = int(raw_text)
     try:
-        for i in range(arg-1, len(links)):  # Iterate over each link
+        arg = int(raw_text)
+    except:
+        arg = 1
 
-            Vxy = links[i][1].replace("www.youtube-nocookie.com/embed", "youtu.be")
-            url = "https://" + Vxy
+    await m.reply_text("**⚡Downloading Started...⏳**")
 
-            name1 = links[i][0].replace("\t", "").replace(":", "").replace("/", "").replace("+", "").replace("#", "").replace("|", "").replace("@", "").replace("*", "").replace(".", "").replace("https", "")
+    try:
+        for i in range(arg - 1, len(links)):
+            raw_link = links[i][1]
+
+            # Handle embed conversion
+            if "embed/" in raw_link:
+                video_id = raw_link.split("embed/")[-1].split("?")[0].strip()
+                url = f"https://www.youtube.com/watch?v={video_id}"
+            else:
+                url = "https://" + raw_link
+
+            # Clean filename from txt left part
+            name1 = re.sub(r'[\\/:*?"<>|#@+.]', '', links[i][0].replace("https", "")).strip()
             name = f'{name1[:60]} {CREDIT}'
 
-            if "youtube.com" in url or "youtu.be" in url:
-                cmd = f'yt-dlp -x --audio-format mp3 --cookies {cookies_file_path} "{url}" -o "{name}.mp3"'
-                print(f"Running command: {cmd}")
-                os.system(cmd)
-                if os.path.exists(f'{name}.mp3'):
-                   print(f"File {name}.mp3 exists, attempting to send...")
-                   try:
-                       await bot.send_document(chat_id=m.chat.id, document=f'{name}.mp3', caption=f'**🎵 Title : **  {name}.mp3\n\n🔗**Video link** : {url}\n\n🌟** Extracted By** : {CREDIT}')
-                       os.remove(f'{name}.mp3')
-                   except Exception as e:
-                       print(f"Error sending document: {str(e)}")
-                else:
-                     print(f"File {name}.mp3 does not exist.")                
+            # yt-dlp command for 720p MP4 + thumbnail
+            cmd = (
+                f'yt-dlp --cookies {cookies_file_path} '
+                f'-f "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]" '
+                f'--merge-output-format mp4 '
+                f'--write-thumbnail --convert-thumbnails jpg '
+                f'"{url}" -o "{name}.mp4"'
+            )
+
+            print(f"Running command: {cmd}")
+            os.system(cmd)
+
+            mp4_path = f"{name}.mp4"
+            thumb_path = f"{name}.jpg"
+
+            if os.path.exists(mp4_path):
+                try:
+                    await bot.send_video(
+                        chat_id=m.chat.id,
+                        video=mp4_path,
+                        thumb=thumb_path if os.path.exists(thumb_path) else None,
+                        caption=f'**🎬 Title :**  {name}.mp4\n\n🔗**Video link:** {url}\n\n🌟** Extracted By:** {CREDIT}'
+                    )
+                    os.remove(mp4_path)
+                    if os.path.exists(thumb_path):
+                        os.remove(thumb_path)
+                except Exception as e:
+                    print(f"Error sending video: {e}")
+            else:
+                print(f"File {mp4_path} does not exist.")
     except Exception as e:
         await m.reply_text(f"<b>Failed Reason:</b>\n<blockquote><b>{str(e)}</b></blockquote>")
     finally:
-        await m.reply_text("🕊️Done Baby💞")
+        await m.reply_text("🕊️ Done Baby 💞")
 
 
 @bot.on_message(filters.command(["yt2m"]))
